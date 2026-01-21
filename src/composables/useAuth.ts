@@ -4,29 +4,23 @@ interface User {
   username: string;
 }
 
-interface AuthState {
-  user: User | null;
-  isAuthenticated: boolean;
-}
-
-// Mock user credentials for demo
-const VALID_CREDENTIALS = {
-  username: 'testuser',
-  password: 'password123',
-};
+const API_BASE = '/api';
 
 // Reactive state
 const user = ref<User | null>(null);
+const sessionId = ref<string | null>(null);
 
 // Initialize from localStorage on load
 const initAuth = () => {
-  const stored = localStorage.getItem('auth');
-  if (stored) {
+  const storedSession = localStorage.getItem('sessionId');
+  const storedUser = localStorage.getItem('user');
+  if (storedSession && storedUser) {
     try {
-      const parsed = JSON.parse(stored);
-      user.value = parsed.user;
+      sessionId.value = storedSession;
+      user.value = JSON.parse(storedUser);
     } catch {
-      localStorage.removeItem('auth');
+      localStorage.removeItem('sessionId');
+      localStorage.removeItem('user');
     }
   }
 };
@@ -38,25 +32,52 @@ export function useAuth() {
   const isAuthenticated = computed(() => !!user.value);
 
   const login = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    try {
+      const response = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      });
 
-    // Mock authentication
-    if (username === VALID_CREDENTIALS.username && password === VALID_CREDENTIALS.password) {
-      user.value = { username };
-      localStorage.setItem('auth', JSON.stringify({ user: user.value }));
-      return { success: true };
+      const data = await response.json();
+
+      if (data.success) {
+        user.value = data.user;
+        sessionId.value = data.sessionId;
+        localStorage.setItem('sessionId', data.sessionId);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        return { success: true };
+      }
+
+      return { success: false, error: data.error || 'Login failed' };
+    } catch (error) {
+      return { success: false, error: 'Network error. Please try again.' };
     }
-
-    return { success: false, error: 'Invalid username or password' };
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await fetch(`${API_BASE}/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'X-Session-Id': sessionId.value || '',
+        },
+      });
+    } catch {
+      // Ignore errors during logout
+    }
+
     user.value = null;
-    localStorage.removeItem('auth');
+    sessionId.value = null;
+    localStorage.removeItem('sessionId');
+    localStorage.removeItem('user');
   };
 
   const getUser = () => user.value;
+
+  const getSessionId = () => sessionId.value;
 
   return {
     user: computed(() => user.value),
@@ -64,5 +85,6 @@ export function useAuth() {
     login,
     logout,
     getUser,
+    getSessionId,
   };
 }

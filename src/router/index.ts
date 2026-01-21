@@ -2,6 +2,11 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { useAuth } from '../composables/useAuth';
 import LoginView from '../views/LoginView.vue';
 import DashboardView from '../views/DashboardView.vue';
+import ProfileView from '../views/ProfileView.vue';
+import SettingsView from '../views/SettingsView.vue';
+import ProductListView from '../views/ProductListView.vue';
+import ProductDetailView from '../views/ProductDetailView.vue';
+import ProductFormView from '../views/ProductFormView.vue';
 
 const routes = [
   {
@@ -18,6 +23,43 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: DashboardView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: ProfileView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/settings',
+    name: 'Settings',
+    component: SettingsView,
+    meta: { requiresAuth: true },
+  },
+  // Products CRUD routes
+  {
+    path: '/products',
+    name: 'ProductList',
+    component: ProductListView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/products/new',
+    name: 'ProductCreate',
+    component: ProductFormView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/products/:id',
+    name: 'ProductDetail',
+    component: ProductDetailView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/products/:id/edit',
+    name: 'ProductEdit',
+    component: ProductFormView,
     meta: { requiresAuth: true },
   },
 ];

@@ -11,7 +11,7 @@ async function loginAsTestUser(page: import('@playwright/test').Page) {
 
 test.describe('Feature: Navigation Component', () => {
   test.describe('Scenario: Navigation is visible when logged in', () => {
-    test('should display navigation bar with all links', async ({ page }) => {
+    test('should display navigation bar with all elements', async ({ page }) => {
       await test.step('Given I am logged in as "testuser"', async () => {
         await loginAsTestUser(page);
       });
@@ -20,8 +20,8 @@ test.describe('Feature: Navigation Component', () => {
         await expect(page.getByRole('navigation')).toBeVisible();
       });
 
-      await test.step('And I should see a link to Dashboard', async () => {
-        await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible();
+      await test.step('And I should see the drawer toggle button', async () => {
+        await expect(page.getByRole('button', { name: 'Toggle menu' })).toBeVisible();
       });
 
       await test.step('And I should see a logout button', async () => {
@@ -29,7 +29,7 @@ test.describe('Feature: Navigation Component', () => {
       });
 
       await test.step('And I should see my username displayed', async () => {
-        await expect(page.getByTestId('current-user')).toContainText('testuser');
+        await expect(page.getByText('testuser', { exact: true })).toBeVisible();
       });
     });
   });
