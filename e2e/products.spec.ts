@@ -138,4 +138,39 @@ test.describe('Feature: Products CRUD', () => {
       await expect(page.getByRole('heading', { name: 'Products' })).toBeVisible();
     });
   });
+
+  test.describe('Error Handling', () => {
+    test('should show not found state for non-existent product', async ({ page }) => {
+      await page.goto('/products/1');
+
+      // Product should not exist - verify not found state
+      await expect(page.getByText(/not found|does not exist/i)).toBeVisible({ timeout: 5000 });
+    });
+
+    test('should handle API error gracefully when loading products', async ({ page, context }) => {
+      // Intercept API call and return error
+      await context.route('**/api/products', (route) => {
+        route.fulfill({
+          status: 500,
+          body: JSON.stringify({ error: 'Internal Server Error' }),
+        });
+      });
+
+      await page.goto('/products');
+
+      // App shows empty state when API fails (no products loaded)
+      // Either error message or empty state is acceptable
+      const errorOrEmpty = page.getByText(/error|failed|no products/i);
+      await expect(errorOrEmpty).toBeVisible({ timeout: 5000 });
+    });
+
+    // This test is intentionally designed to fail to demonstrate screenshot capture
+    // Remove .fail() to skip this test in normal runs
+    test.fail('DEMO: intentional failure to capture screenshot', async ({ page }) => {
+      await page.goto('/products');
+
+      // This will fail - looking for element that doesn't exist
+      await expect(page.getByRole('button', { name: 'Non-existent Button' })).toBeVisible({ timeout: 3000 });
+    });
+  });
 });
