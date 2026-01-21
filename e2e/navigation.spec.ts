@@ -1,108 +1,61 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
-// Helper to login before navigation tests
-async function loginAsTestUser(page: import('@playwright/test').Page) {
+// Helper: Login and navigate to dashboard
+async function loginAsTestUser(page: Page) {
   await page.goto('/login');
   await page.getByLabel('Username').fill('testuser');
   await page.getByLabel('Password').fill('password123');
-  await page.getByRole('button', { name: 'Login' }).click();
+  await page.getByRole('button', { name: 'Sign In' }).click();
   await expect(page).toHaveURL('/dashboard');
 }
 
 test.describe('Feature: Navigation Component', () => {
-  test.describe('Scenario: Navigation is visible when logged in', () => {
-    test('should display navigation bar with all elements', async ({ page }) => {
-      await test.step('Given I am logged in as "testuser"', async () => {
-        await loginAsTestUser(page);
-      });
+  test('should display navigation bar with all elements when logged in', async ({ page }) => {
+    await loginAsTestUser(page);
 
-      await test.step('Then I should see the navigation bar', async () => {
-        await expect(page.getByRole('navigation')).toBeVisible();
-      });
-
-      await test.step('And I should see the drawer toggle button', async () => {
-        await expect(page.getByRole('button', { name: 'Toggle menu' })).toBeVisible();
-      });
-
-      await test.step('And I should see a logout button', async () => {
-        await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible();
-      });
-
-      await test.step('And I should see my username displayed', async () => {
-        await expect(page.getByText('testuser', { exact: true })).toBeVisible();
-      });
-    });
+    // Verify all navigation elements
+    await expect(page.locator('.top-nav')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Toggle menu' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible();
+    // Username appears in the top nav bar
+    await expect(page.locator('.top-nav').getByText('testuser')).toBeVisible();
   });
 
-  test.describe('Scenario: Navigation is hidden on login page', () => {
-    test('should not display navigation on login page', async ({ page }) => {
-      await test.step('Given I am on the login page', async () => {
-        await page.goto('/login');
-      });
-
-      await test.step('Then I should not see the navigation bar', async () => {
-        await expect(page.getByRole('navigation')).not.toBeVisible();
-      });
-    });
+  test('should not display navigation on login page', async ({ page }) => {
+    await page.goto('/login');
+    await expect(page.locator('.top-nav')).not.toBeVisible();
   });
 });
 
 test.describe('Feature: User Logout', () => {
-  test.describe('Scenario: Successful logout', () => {
-    test('should logout user and redirect to login page', async ({ page }) => {
-      await test.step('Given I am logged in as "testuser"', async () => {
-        await loginAsTestUser(page);
-      });
-
-      await test.step('When I click the logout button', async () => {
-        await page.getByRole('button', { name: 'Logout' }).click();
-      });
-
-      await test.step('Then I should be redirected to the login page', async () => {
-        await expect(page).toHaveURL('/login');
-      });
-
-      await test.step('And I should see the login form', async () => {
-        await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
-      });
-    });
+  test.beforeEach(async ({ page }) => {
+    await loginAsTestUser(page);
   });
 
-  test.describe('Scenario: Cannot access dashboard after logout', () => {
-    test('should prevent access to dashboard after logout', async ({ page }) => {
-      await test.step('Given I am logged in as "testuser"', async () => {
-        await loginAsTestUser(page);
-      });
+  test('should logout user and redirect to login page', async ({ page }) => {
+    await page.getByRole('button', { name: 'Logout' }).click();
 
-      await test.step('When I logout', async () => {
-        await page.getByRole('button', { name: 'Logout' }).click();
-        await expect(page).toHaveURL('/login');
-      });
-
-      await test.step('And I try to navigate back to dashboard', async () => {
-        await page.goto('/dashboard');
-      });
-
-      await test.step('Then I should be redirected to login', async () => {
-        await expect(page).toHaveURL('/login');
-      });
-    });
+    await expect(page).toHaveURL('/login');
+    await expect(page.getByRole('heading', { name: 'Welcome Back' })).toBeVisible();
   });
 
-  test.describe('Scenario: Logout clears session data', () => {
-    test('should clear all user data on logout', async ({ page }) => {
-      await test.step('Given I am logged in as "testuser"', async () => {
-        await loginAsTestUser(page);
-      });
+  test('should prevent access to dashboard after logout', async ({ page }) => {
+    // Logout
+    await page.getByRole('button', { name: 'Logout' }).click();
+    await expect(page).toHaveURL('/login');
 
-      await test.step('When I logout', async () => {
-        await page.getByRole('button', { name: 'Logout' }).click();
-      });
+    // Try to access dashboard
+    await page.goto('/dashboard');
 
-      await test.step('Then the local storage should be cleared', async () => {
-        const authData = await page.evaluate(() => localStorage.getItem('auth'));
-        expect(authData).toBeNull();
-      });
-    });
+    // Should be redirected to login
+    await expect(page).toHaveURL('/login');
+  });
+
+  test('should clear session data on logout', async ({ page }) => {
+    await page.getByRole('button', { name: 'Logout' }).click();
+
+    // Verify localStorage is cleared
+    const authData = await page.evaluate(() => localStorage.getItem('auth'));
+    expect(authData).toBeNull();
   });
 });

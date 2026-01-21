@@ -1,99 +1,56 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+
+// Helper: Fill login form and submit
+async function login(page: Page, username: string, password: string) {
+  await page.getByLabel('Username').fill(username);
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Sign In' }).click();
+}
 
 test.describe('Feature: User Login', () => {
-  test.describe('Scenario: Successful login with valid credentials', () => {
-    test('should allow user to login and redirect to dashboard', async ({ page }) => {
-      await test.step('Given I am on the login page', async () => {
-        await page.goto('/login');
-        await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
-      });
-
-      await test.step('When I enter valid username "testuser"', async () => {
-        await page.getByLabel('Username').fill('testuser');
-      });
-
-      await test.step('And I enter valid password "password123"', async () => {
-        await page.getByLabel('Password').fill('password123');
-      });
-
-      await test.step('And I click the login button', async () => {
-        await page.getByRole('button', { name: 'Login' }).click();
-      });
-
-      await test.step('Then I should be redirected to the dashboard', async () => {
-        await expect(page).toHaveURL('/dashboard');
-      });
-
-      await test.step('And I should see a welcome message', async () => {
-        await expect(page.getByText('Welcome, testuser')).toBeVisible();
-      });
-    });
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/login');
   });
 
-  test.describe('Scenario: Failed login with invalid credentials', () => {
-    test('should show error message for invalid credentials', async ({ page }) => {
-      await test.step('Given I am on the login page', async () => {
-        await page.goto('/login');
-      });
+  test('should allow user to login and redirect to dashboard', async ({ page }) => {
+    // Given I am on the login page
+    await expect(page.getByRole('heading', { name: 'Welcome Back' })).toBeVisible();
 
-      await test.step('When I enter invalid username "wronguser"', async () => {
-        await page.getByLabel('Username').fill('wronguser');
-      });
+    // When I login with valid credentials
+    await login(page, 'testuser', 'password123');
 
-      await test.step('And I enter invalid password "wrongpass"', async () => {
-        await page.getByLabel('Password').fill('wrongpass');
-      });
-
-      await test.step('And I click the login button', async () => {
-        await page.getByRole('button', { name: 'Login' }).click();
-      });
-
-      await test.step('Then I should see an error message', async () => {
-        await expect(page.getByRole('alert')).toContainText('Invalid username or password');
-      });
-
-      await test.step('And I should remain on the login page', async () => {
-        await expect(page).toHaveURL('/login');
-      });
-    });
+    // Then I should be redirected to the dashboard with welcome message
+    await expect(page).toHaveURL('/dashboard');
+    await expect(page.getByRole('heading', { name: /Welcome back/ })).toBeVisible();
   });
 
-  test.describe('Scenario: Login form validation', () => {
-    test('should show validation errors for empty fields', async ({ page }) => {
-      await test.step('Given I am on the login page', async () => {
-        await page.goto('/login');
-      });
+  test('should show error message for invalid credentials', async ({ page }) => {
+    // When I login with invalid credentials
+    await login(page, 'wronguser', 'wrongpass');
 
-      await test.step('When I click the login button without entering credentials', async () => {
-        await page.getByRole('button', { name: 'Login' }).click();
-      });
-
-      await test.step('Then I should see validation error for username', async () => {
-        await expect(page.getByText('Username is required')).toBeVisible();
-      });
-
-      await test.step('And I should see validation error for password', async () => {
-        await expect(page.getByText('Password is required')).toBeVisible();
-      });
-    });
+    // Then I should see an error and remain on login page
+    await expect(page.getByRole('alert')).toContainText('Invalid username or password');
+    await expect(page).toHaveURL('/login');
   });
 
-  test.describe('Scenario: Redirect unauthenticated users to login', () => {
-    test('should redirect to login when accessing protected routes', async ({ page }) => {
-      await test.step('Given I am not logged in', async () => {
-        // Navigate first to be able to clear storage
-        await page.goto('/login');
-        await page.context().clearCookies();
-        await page.evaluate(() => localStorage.clear());
-      });
+  test('should show validation errors for empty fields', async ({ page }) => {
+    // When I click login without entering credentials
+    await page.getByRole('button', { name: 'Sign In' }).click();
 
-      await test.step('When I try to access the dashboard directly', async () => {
-        await page.goto('/dashboard');
-      });
+    // Then I should see validation errors
+    await expect(page.getByText('Username is required')).toBeVisible();
+    await expect(page.getByText('Password is required')).toBeVisible();
+  });
 
-      await test.step('Then I should be redirected to the login page', async () => {
-        await expect(page).toHaveURL('/login');
-      });
-    });
+  test('should redirect to login when accessing protected routes', async ({ page }) => {
+    // Given I am not logged in (clear any existing session)
+    await page.context().clearCookies();
+    await page.evaluate(() => localStorage.clear());
+
+    // When I try to access dashboard directly
+    await page.goto('/dashboard');
+
+    // Then I should be redirected to login
+    await expect(page).toHaveURL('/login');
   });
 });
